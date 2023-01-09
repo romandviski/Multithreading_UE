@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "ThreadUE/ThreadUEGameModeBase.h"
+
+class AThreadUEGameModeBase;
 
 class THREADUE_API FSimpleAtomic_Runnable : public FRunnable
 {

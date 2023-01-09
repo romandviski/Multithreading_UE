@@ -1,4 +1,5 @@
 ﻿#include "SimpleAtomic_Runnable.h"
+#include "ThreadUE/ThreadUEGameModeBase.h"
 
 inline FSimpleAtomic_Runnable::FSimpleAtomic_Runnable(FColor Color, AThreadUEGameModeBase *OwnerActor, uint32 NeedIteration, bool SeparateLogic, bool UseAtomic)
 {

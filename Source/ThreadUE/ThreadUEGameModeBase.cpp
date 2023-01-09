@@ -59,8 +59,92 @@ void AThreadUEGameModeBase::BeginPlay()
 void AThreadUEGameModeBase::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
+
+	StopSimpleCounterThread();
 }
 
+// SimpleCounter here
+void AThreadUEGameModeBase::CreateSimpleCounterThread()
+{
+	if (!CurrentRunningGameModeThread_SimpleCounter) // проверяем что потока нет
+		{
+		if (!MyRunnableClass_SimpleCounter)
+		{
+			MyRunnableClass_SimpleCounter = new FSimpleCounter_Runnable(ColorSimpleCounter, this, bIsUseSafeVariable);
+		}
+		// создаём поток
+		CurrentRunningGameModeThread_SimpleCounter = FRunnableThread::Create(MyRunnableClass_SimpleCounter, TEXT("SimpleCounter Thread"), 0, EThreadPriority::TPri_Normal);
+		}
+}
+
+bool AThreadUEGameModeBase::SwitchRunStateSimpleCounterThread(bool bIsPause)
+{
+	if (CurrentRunningGameModeThread_SimpleCounter)
+	{
+		CurrentRunningGameModeThread_SimpleCounter->Suspend(bIsPause);
+	}
+
+	return !bIsPause;
+}
+
+void AThreadUEGameModeBase::StopSimpleCounterThread()
+{
+	if (CurrentRunningGameModeThread_SimpleCounter)
+	{
+		if (MyRunnableClass_SimpleCounter)
+		{
+			CurrentRunningGameModeThread_SimpleCounter->Suspend(false);
+			// Not safe bool
+			MyRunnableClass_SimpleCounter->bIsStopThread = true;
+			// Safe bool
+			MyRunnableClass_SimpleCounter->bIsStopThreadSafe = true;
+
+			// интересные штуки:
+			//FThreadSingletonInitializer
+			//FMemStack - выделение памяти
+			//FThreadStats - статистика
+			//FFakeThread - фейковый поток
+			//FPlatformProcess::SupportsMultithreading() - есть ли поддержка мультипотока
+
+			CurrentRunningGameModeThread_SimpleCounter->WaitForCompletion(); // ждём завершения
+		
+			//delete CurrentRunningGameModeThread_SimpleCounter; // логично, но в анриле свой сборщик
+			CurrentRunningGameModeThread_SimpleCounter = nullptr;
+			MyRunnableClass_SimpleCounter = nullptr;
+		}
+	}
+}
+
+void AThreadUEGameModeBase::KillSimpleCounterThread(bool bIsShouldWait)
+{
+	if (CurrentRunningGameModeThread_SimpleCounter)
+	{
+		CurrentRunningGameModeThread_SimpleCounter->Suspend(false);
+		CurrentRunningGameModeThread_SimpleCounter->Kill(bIsShouldWait); // убиваем поток
+		CurrentRunningGameModeThread_SimpleCounter = nullptr;
+		MyRunnableClass_SimpleCounter = nullptr;
+	}
+}
+
+int64 AThreadUEGameModeBase::GetSimpleCounterThread()
+{
+	int64 result = -1;
+	if (MyRunnableClass_SimpleCounter)
+	{
+		if (MyRunnableClass_SimpleCounter->bIsUseSafeVariable)
+		{
+			result = MyRunnableClass_SimpleCounter->CounterSafe.GetValue();
+		}
+		else
+		{
+			result = MyRunnableClass_SimpleCounter->Counter;
+		}
+	}
+	return result;
+}
+
+
+// SimpleAtomic here
 void AThreadUEGameModeBase::CreateSimpleAtomicThread()
 {
 	for (int i = 0; i < NumberOfThreadToCreate; ++i)
@@ -105,4 +189,3 @@ void AThreadUEGameModeBase::ResetCounterSimpleAtomic()
 	AtomicCounter1 = 0;
 	AtomicCounter2 = 0;
 }
-
